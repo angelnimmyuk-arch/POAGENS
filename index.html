@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>POAGENS — Test Slot Booking</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- FIREBASE: Replace the config below with YOUR project's -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script>
+// ╔═══════════════════════════════════════════════════════╗
+// ║  PASTE YOUR FIREBASE CONFIG HERE (see setup guide)   ║
+// ╚═══════════════════════════════════════════════════════╝
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  databaseURL: "https://YOUR_PROJECT-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "YOUR_PROJECT",
+  storageBucket: "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "000000000000",
+  appId: "YOUR_APP_ID"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+</script>
+
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --dk:#001B4D;--blue:#003087;--mid:#005EB8;--br:#0072CE;--lt:#41B6E6;
+  --bg:#EEF2F4;--card:#FFF;--ch:#F7FAFE;--bdr:#D5DCE0;--bdrL:#E6EAED;
+  --t1:#162029;--t2:#3D4F5F;--t3:#6B7D8D;--t4:#9DAAB4;
+  --grn:#007F3B;--red:#DA291C;--amb:#ED8B00;--r:8px;
+}
+body{font-family:'Outfit',system-ui,sans-serif;background:var(--bg);color:var(--t1);min-height:100vh;-webkit-font-smoothing:antialiased}
+button,select,input{font-family:inherit}
+
+/* Header */
+.hdr{background:var(--blue);color:#fff;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;position:sticky;top:0;z-index:100;box-shadow:0 2px 16px rgba(0,48,135,.35)}
+.hdr-l{display:flex;align-items:center;gap:10px}
+.badge{background:#fff;color:var(--blue);font-weight:900;font-size:12px;padding:2px 8px;border-radius:4px;letter-spacing:1.5px}
+.hdr-name{font-size:20px;font-weight:800;letter-spacing:3px;cursor:pointer}
+.hdr-r{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.pill{background:rgba(255,255,255,.14);padding:5px 14px;border-radius:18px;font-size:12px;font-weight:600;display:flex;align-items:center;gap:5px}
+.pill .dot{width:7px;height:7px;border-radius:50%;background:#00D68F;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.hdr-btn{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;padding:5px 14px;border-radius:18px;font-size:12px;cursor:pointer;font-weight:600;transition:.15s}
+.hdr-btn:hover{background:rgba(255,255,255,.22)}
+
+/* Nav */
+.nav{background:var(--card);border-bottom:1px solid var(--bdrL);padding:8px 20px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.nb{padding:6px 12px;border-radius:var(--r);border:1.5px solid var(--bdr);background:var(--card);color:var(--blue);font-size:12px;font-weight:600;cursor:pointer;transition:.15s}
+.nb:hover,.nb.on{background:var(--blue);color:#fff;border-color:var(--blue)}
+
+/* Sync bar */
+.sync{display:flex;align-items:center;gap:6px;padding:6px 20px;background:#F0FFF4;border-bottom:1px solid #C6F6D5}
+.sync .sd{width:8px;height:8px;border-radius:50%;background:var(--grn);animation:pulse 2s infinite}
+
+/* Date nav */
+.dnav{display:flex;align-items:center;justify-content:center;gap:16px;padding:14px 16px;background:var(--card);border-bottom:1px solid var(--bdrL)}
+.darr{width:36px;height:36px;border-radius:var(--r);border:1.5px solid var(--bdr);background:var(--card);font-size:18px;cursor:pointer;color:var(--blue);font-weight:700;display:flex;align-items:center;justify-content:center;transition:.15s}
+.darr:hover{background:var(--blue);color:#fff;border-color:var(--blue)}
+.ddate{font-size:15px;font-weight:700;color:var(--blue)}
+.chip{display:inline-block;background:#E0EEFF;color:var(--blue);font-size:10px;font-weight:700;padding:2px 10px;border-radius:10px;margin-left:6px;text-transform:uppercase;letter-spacing:.5px}
+
+.main{max-width:920px;margin:0 auto;padding:16px}
+.sec-h{font-size:20px;font-weight:800;color:var(--blue);margin-bottom:4px}
+.sec-p{font-size:12px;color:var(--t3);margin-bottom:16px}
+
+/* Summary */
+.summ{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.sc{background:var(--card);border:1px solid var(--bdrL);border-radius:var(--r);padding:10px 14px;flex:1;min-width:80px;text-align:center}
+.sc .n{font-size:22px;font-weight:800;color:var(--blue);font-family:'IBM Plex Mono',monospace}
+.sc .l{font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;font-weight:600}
+
+/* Slots */
+.slots{display:flex;flex-direction:column;gap:5px}
+.se{display:flex;align-items:center;gap:14px;padding:14px 16px;background:var(--card);border:1.5px dashed var(--bdr);border-radius:var(--r);cursor:pointer;transition:.2s}
+.se:hover{border-color:var(--br);background:var(--ch);transform:translateX(2px)}
+.st{font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;color:var(--blue);min-width:50px;flex-shrink:0}
+.sa{font-size:12px;color:var(--t4)}
+.sb{display:flex;align-items:flex-start;gap:12px;padding:12px 16px;background:var(--card);border:1.5px solid var(--bdrL);border-radius:var(--r);position:relative;border-left:4px solid var(--blue);animation:fu .2s ease}
+@keyframes fu{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.sp{font-size:14px;font-weight:700}
+.sr{font-size:11px;color:var(--t3);font-family:'IBM Plex Mono',monospace;margin-top:1px}
+.stx{display:inline-block;margin-top:5px;padding:3px 12px;border-radius:8px;background:#E0EEFF;color:var(--blue);font-size:12px;font-weight:700}
+.sd2{font-size:11px;color:var(--t2);margin-top:3px}
+.sm{font-size:10px;color:var(--t4);margin-top:5px;display:flex;align-items:center;gap:4px}
+.del{position:absolute;top:8px;right:10px;background:none;border:none;color:var(--t4);font-size:16px;cursor:pointer;padding:3px 5px;border-radius:4px;line-height:1;transition:.15s}
+.del:hover{background:#FDE8E8;color:var(--red)}
+.sbl{display:flex;align-items:center;gap:14px;padding:12px 16px;background:#FEF2F2;border:1.5px solid #FECACA;border-radius:var(--r);opacity:.7}
+.ctag{font-size:9px;background:var(--amb);color:#fff;border-radius:4px;padding:0 4px;font-weight:800;margin-left:4px}
+.blk-ban{background:#FDE8E8;border:1.5px solid #F5A5A5;border-radius:var(--r);padding:14px 18px;margin-bottom:14px;font-size:13px;color:var(--red);font-weight:600;text-align:center}
+
+/* Modal */
+.ov{position:fixed;inset:0;background:rgba(0,27,77,.4);backdrop-filter:blur(5px);display:none;align-items:center;justify-content:center;z-index:500;padding:16px}
+.ov.open{display:flex}
+.mod{background:var(--card);border-radius:14px;max-width:480px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 70px rgba(0,0,0,.2);animation:mu .18s ease}
+@keyframes mu{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+.mh{padding:18px 22px 12px;border-bottom:1px solid var(--bdrL)}
+.mtt{font-size:17px;font-weight:800;color:var(--blue)}
+.mss{font-size:12px;color:var(--t3);margin-top:1px}
+.mbod{padding:8px 22px 18px}
+.mft{padding:12px 22px 18px;display:flex;justify-content:flex-end;gap:8px}
+.fl{display:block;font-size:11px;font-weight:700;color:var(--t2);margin:12px 0 4px;text-transform:uppercase;letter-spacing:.5px}
+.fi{width:100%;padding:9px 12px;border:1.5px solid var(--bdr);border-radius:var(--r);font-size:14px;outline:none;background:#FAFBFC}
+.fi:focus{border-color:var(--blue);background:#fff}
+.fs{width:100%;padding:9px 12px;border:1.5px solid var(--bdr);border-radius:var(--r);font-size:14px;outline:none;background:#FAFBFC;cursor:pointer}
+.bc{padding:9px 18px;border-radius:var(--r);border:1px solid var(--bdr);background:var(--card);color:var(--t2);font-size:13px;cursor:pointer;font-weight:600}
+.bok{padding:9px 24px;border-radius:var(--r);border:none;background:var(--blue);color:#fff;font-size:13px;cursor:pointer;font-weight:700}
+.bok:hover{background:var(--dk)}
+.bred{padding:9px 18px;border-radius:var(--r);border:none;background:var(--red);color:#fff;font-size:13px;cursor:pointer;font-weight:700}
+
+/* Login */
+.lbg{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:linear-gradient(150deg,var(--dk),var(--blue) 50%,var(--mid) 80%,var(--br))}
+.lbox{background:#fff;border-radius:18px;padding:44px 36px;max-width:460px;width:100%;text-align:center;box-shadow:0 28px 70px rgba(0,0,0,.22)}
+.lh{font-size:34px;font-weight:900;color:var(--blue);letter-spacing:4px;margin:14px 0 2px}
+.llp{font-size:13px;color:var(--t3)}
+.sg{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:20px}
+.sbt{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1.5px solid var(--bdrL);border-radius:10px;background:#FAFBFC;cursor:pointer;font-size:12px;font-weight:600;color:var(--blue);transition:.15s;width:100%;text-align:left}
+.sbt:hover{background:var(--blue);color:#fff;border-color:var(--blue)}
+.sav{width:30px;height:30px;border-radius:50%;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0}
+.sbt:hover .sav{background:#fff;color:var(--blue)}
+
+/* Admin */
+.acard{background:var(--card);border:1.5px solid var(--bdrL);border-radius:10px;padding:18px 20px;margin-bottom:14px}
+.ah3{font-size:15px;font-weight:700;color:var(--blue);margin-bottom:4px}
+.arow{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-top:8px}
+.bchip{display:inline-flex;align-items:center;gap:4px;background:#FEF2F2;border:1px solid #FECACA;border-radius:6px;padding:3px 10px;font-size:11px;font-weight:600;color:var(--red);margin:2px}
+.bchip button{background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;padding:0;line-height:1}
+
+/* Calendar */
+.cgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.cday{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px 4px;background:var(--card);border:1.5px solid var(--bdrL);border-radius:10px;cursor:pointer;transition:.15s;gap:2px;min-height:72px}
+.cday:hover{border-color:var(--blue)}
+.cday.today{border-color:var(--br);background:#F0F7FF}
+.cday.blocked{background:#FEF2F2;border-color:#F5A5A5}
+
+/* History */
+.hbtn{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;background:var(--card);border:1.5px solid var(--bdrL);border-radius:var(--r);cursor:pointer;width:100%;transition:.15s;margin-bottom:5px}
+.hbtn:hover{border-color:var(--blue);transform:translateX(2px)}
+
+/* Toast */
+.toast{position:fixed;top:14px;left:50%;transform:translateX(-50%);color:#fff;padding:9px 24px;border-radius:10px;font-size:13px;font-weight:600;z-index:9999;box-shadow:0 4px 24px rgba(0,0,0,.2);pointer-events:none;animation:ti .2s ease}
+@keyframes ti{from{opacity:0;transform:translateX(-50%) translateY(-10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+
+.foot{text-align:center;padding:20px;font-size:11px;color:var(--t4)}
+
+@media(max-width:520px){
+  .main{padding:12px}.summ{gap:4px}.sc{padding:8px}.sc .n{font-size:18px}
+  .lbox{padding:28px 20px}.lh{font-size:26px}.sg{grid-template-columns:1fr}
+  .hdr{padding:10px 14px}.hdr-name{font-size:17px;letter-spacing:2px}
+  .cgrid{grid-template-columns:repeat(4,1fr)}
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+// ═══════════════════════════════════════
+// STAFF & CONFIG
+// ═══════════════════════════════════════
+const STAFF=[
+  'Honey Arnisto','Penny Williams','Angel Elenjikkal','Adnan',
+  'Neil Ashton','Michelle Atkins','Really Balot','Rachel Bartlett',
+  'Estela Baty','Mandy Bright','Charlie Cassidy','Sita Coban',
+  'Robina Hofmann','Sam Howard','Lilibeth Malabrigo-Patulot',
+  'Antonela Onea','Carol Porter','Anne Rowe','Amanda Warren','Eileen Wood'
+];
+const DEF_TIMES=[
+  '08:00','08:30','09:00','09:30','10:00','10:30',
+  '11:00','11:30','12:00','12:30','13:00','13:30',
+  '14:00','14:30','15:00','15:30','16:00','16:30'
+];
+const SPECS=['Ortho','Gynae','Urology','Gen Surg','Vascular','ENT','Ophthalmology','Cardiology','Dermatology','Gastro','Respiratory','Other'];
+
+// ═══════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════
+const todayStr=()=>new Date().toISOString().split('T')[0];
+const fmtDate=ds=>{const d=new Date(ds+'T12:00:00');return d.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'})};
+const shortDate=ds=>{const d=new Date(ds+'T12:00:00');return d.toLocaleDateString('en-GB',{day:'numeric',month:'short'})};
+const chipLbl=ds=>{const t=todayStr();if(ds===t)return'Today';const tm=new Date(Date.now()+864e5).toISOString().split('T')[0];if(ds===tm)return'Tomorrow';const y=new Date(Date.now()-864e5).toISOString().split('T')[0];if(ds===y)return'Yesterday';return''};
+const ini=n=>{const p=n.trim().split(/\s+/);return p.length>=2?(p[0][0]+p[p.length-1][0]).toUpperCase():n.substring(0,2).toUpperCase()};
+const esc=s=>{const d=document.createElement('div');d.textContent=s||'';return d.innerHTML};
+const navD=(ds,off)=>{const d=new Date(ds+'T12:00:00');d.setDate(d.getDate()+off);return d.toISOString().split('T')[0]};
+const sortT=arr=>[...arr].sort((a,b)=>a.localeCompare(b));
+
+// ═══════════════════════════════════════
+// FIREBASE DATA LAYER
+// ═══════════════════════════════════════
+const FB={
+  dayRef:ds=>db.ref('days/'+ds),
+  cfgRef:()=>db.ref('config'),
+  onDay:(ds,cb)=>FB.dayRef(ds).on('value',snap=>cb(snap.val()||{slots:{},blocked:[],customTimes:[]})),
+  offDay:(ds)=>FB.dayRef(ds).off(),
+  saveSlot:(ds,time,data)=>db.ref('days/'+ds+'/slots/'+time.replace(':','_')).set(data),
+  delSlot:(ds,time)=>db.ref('days/'+ds+'/slots/'+time.replace(':','_')).remove(),
+  saveBlocked:(ds,arr)=>db.ref('days/'+ds+'/blocked').set(arr),
+  saveCustomTimes:(ds,arr)=>db.ref('days/'+ds+'/customTimes').set(arr),
+  onCfg:cb=>FB.cfgRef().on('value',snap=>cb(snap.val()||{blockedDates:[]})),
+  saveCfg:data=>FB.cfgRef().set(data),
+  // For history — get all dates that have data
+  getAllDays:cb=>db.ref('days').once('value',snap=>{
+    const val=snap.val()||{};
+    const dates=Object.keys(val).filter(d=>val[d].slots&&Object.keys(val[d].slots).length>0).sort().reverse();
+    const result=dates.map(d=>({date:d,count:Object.keys(val[d].slots).length}));
+    cb(result);
+  }),
+  // For calendar
+  getDaySummary:(ds,cb)=>db.ref('days/'+ds).once('value',snap=>{
+    const v=snap.val()||{};
+    cb({booked:v.slots?Object.keys(v.slots).length:0});
+  })
+};
+
+// Firebase stores keys without colons, so we convert
+const timeKey=t=>t.replace(':','_');
+const timeFromKey=k=>k.replace('_',':');
+
+// ═══════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════
+let S={
+  user:localStorage.getItem('poagens_user')||'',
+  date:todayStr(),
+  dayData:{slots:{},blocked:[],customTimes:[]},
+  config:{blockedDates:[]},
+  view:'main',
+  modal:null,
+  toast:null,
+  calData:{}
+};
+let currentListener=null;
+let cfgListener=null;
+
+// ═══════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════
+let tt;
+function toast(msg,type){
+  clearTimeout(tt);S.toast={msg,type};rToast();
+  tt=setTimeout(()=>{S.toast=null;rToast()},3000);
+}
+function rToast(){
+  let el=document.getElementById('tst');
+  if(!el){el=document.createElement('div');el.id='tst';document.body.appendChild(el)}
+  if(!S.toast){el.innerHTML='';return}
+  const bg=S.toast.type==='error'?'var(--red)':S.toast.type==='success'?'var(--grn)':'var(--blue)';
+  el.innerHTML='<div class="toast" style="background:'+bg+'">'+esc(S.toast.msg)+'</div>';
+}
+
+// ═══════════════════════════════════════
+// LIVE LISTENER MANAGEMENT
+// ═══════════════════════════════════════
+function listenToDate(ds){
+  if(currentListener)FB.offDay(currentListener);
+  currentListener=ds;
+  FB.onDay(ds,data=>{
+    // Convert slot keys back to time format
+    const slots={};
+    if(data.slots){
+      Object.entries(data.slots).forEach(([k,v])=>{slots[timeFromKey(k)]=v});
+    }
+    S.dayData={slots,blocked:data.blocked||[],customTimes:data.customTimes||[]};
+    if(S.view==='main')render();
+  });
+}
+
+function listenToConfig(){
+  FB.onCfg(cfg=>{S.config=cfg;if(S.view==='main'||S.view==='admin'||S.view==='calendar')render()});
+}
+
+// ═══════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════
+function render(){
+  const app=document.getElementById('app');
+  if(!S.user){app.innerHTML=loginHTML();bindLogin();return}
+  if(S.view==='history'){app.innerHTML=histHTML();bindHist();return}
+  if(S.view==='calendar'){app.innerHTML=calHTML();bindCal();return}
+  if(S.view==='admin'){app.innerHTML=adminHTML();bindAdmin();return}
+  app.innerHTML=mainHTML();bindMain();
+}
+
+// ═══════════════════════════════════════
+// LOGIN
+// ═══════════════════════════════════════
+function loginHTML(){
+  return'<div class="lbg"><div class="lbox">'+
+    '<div class="badge" style="display:inline-block;margin-bottom:6px">NHS</div>'+
+    '<h1 class="lh">POAGENS</h1><p class="llp">Pre-Op Assessment — Test Slot Booking</p>'+
+    '<p style="font-size:12px;color:var(--t3);margin-top:16px">Select your name to sign in</p>'+
+    '<div class="sg">'+STAFF.map(s=>'<button class="sbt" data-s="'+esc(s)+'"><span class="sav">'+ini(s)+'</span>'+esc(s)+'</button>').join('')+'</div></div></div>';
+}
+function bindLogin(){
+  document.querySelectorAll('.sbt').forEach(b=>{
+    b.onclick=()=>{S.user=b.dataset.s;localStorage.setItem('poagens_user',S.user);listenToDate(S.date);listenToConfig();S.view='main';render()};
+  });
+}
+
+// ═══════════════════════════════════════
+// HEADER + NAV
+// ═══════════════════════════════════════
+function hdrHTML(){
+  return'<header class="hdr"><div class="hdr-l"><span class="badge">NHS</span><span class="hdr-name" id="go-home">POAGENS</span></div>'+
+    '<div class="hdr-r"><span class="pill"><span class="dot"></span>'+esc(S.user)+'</span>'+
+    '<button class="hdr-btn" id="h-out">Sign Out</button></div></header>';
+}
+function navHTML(){
+  return'<div class="nav">'+
+    ['main:📋 Booking','calendar:📅 Calendar','history:🕒 History','admin:⚙️ Manage'].map(x=>{
+      const[id,lbl]=x.split(':');
+      return'<button class="nb'+(S.view===id?' on':'')+'" data-v="'+id+'">'+lbl+'</button>';
+    }).join('')+
+    (S.date!==todayStr()&&S.view==='main'?'<button class="nb" id="go-today" style="margin-left:auto">↩ Today</button>':'')+
+    '</div>';
+}
+function bindHdrNav(){
+  document.getElementById('go-home').onclick=()=>{S.date=todayStr();S.view='main';listenToDate(S.date);render()};
+  document.getElementById('h-out').onclick=()=>{S.user='';localStorage.removeItem('poagens_user');render()};
+  document.querySelectorAll('.nb[data-v]').forEach(b=>{b.onclick=()=>{S.view=b.dataset.v;render()}});
+  const gt=document.getElementById('go-today');
+  if(gt)gt.onclick=()=>{S.date=todayStr();listenToDate(S.date);render()};
+}
+
+// ═══════════════════════════════════════
+// MAIN BOOKING VIEW
+// ═══════════════════════════════════════
+function mainHTML(){
+  const allTimes=sortT([...new Set([...DEF_TIMES,...(S.dayData.customTimes||[])])]);
+  const blocked=S.dayData.blocked||[];
+  const slots=S.dayData.slots||{};
+  const booked=Object.keys(slots).length;
+  const avail=allTimes.filter(t=>!blocked.includes(t)&&!slots[t]).length;
+  const cl=chipLbl(S.date);
+  const dateBlocked=(S.config.blockedDates||[]).includes(S.date);
+
+  let h=hdrHTML()+navHTML();
+  h+='<div class="sync"><span class="sd"></span><span style="font-size:11px;color:var(--grn);font-weight:600">Live Synced</span><span style="font-size:11px;color:var(--t4)">— updates instantly across all staff</span></div>';
+  h+='<div class="dnav"><button class="darr" id="dp">‹</button><div style="text-align:center"><div class="ddate">'+fmtDate(S.date)+(cl?'<span class="chip">'+cl+'</span>':'')+'</div></div><button class="darr" id="dn">›</button></div>';
+  h+='<div class="main">';
+
+  if(dateBlocked)h+='<div class="blk-ban">🚫 This date has been blocked — no slots available for booking.</div>';
+
+  h+='<div class="summ"><div class="sc"><div class="n">'+booked+'</div><div class="l">Booked</div></div><div class="sc"><div class="n">'+avail+'</div><div class="l">Available</div></div><div class="sc"><div class="n">'+blocked.length+'</div><div class="l">Blocked</div></div></div>';
+
+  h+='<div class="slots">';
+  allTimes.forEach(time=>{
+    const sl=slots[time];const isBlk=blocked.includes(time);const isCust=!DEF_TIMES.includes(time);
+    if(isBlk&&!sl){
+      h+='<div class="sbl"><span class="st">'+time+(isCust?'<span class="ctag">+</span>':'')+'</span><span style="font-size:12px;color:var(--red);font-weight:600">Unavailable</span></div>';
+    } else if(sl){
+      const own=sl.bookedBy===S.user;
+      h+='<div class="sb"><div class="st">'+time+(isCust?'<span class="ctag">+</span>':'')+'</div><div style="flex:1;min-width:0"><div class="sp">'+esc(sl.patientName)+'</div>'+
+        (sl.refNumber?'<div class="sr">'+esc(sl.refNumber)+'</div>':'')+
+        (sl.testRequired?'<div class="stx">'+esc(sl.testRequired)+'</div>':'')+
+        (sl.spec?'<div class="sd2">Spec: '+esc(sl.spec)+'</div>':'')+
+        (sl.notes?'<div class="sd2" style="font-style:italic;color:var(--t3)">'+esc(sl.notes)+'</div>':'')+
+        '<div class="sm"><span>Nurse: '+esc(sl.nurse||'—')+'</span><span>·</span><span>🔒</span><span>Booked by '+esc(sl.bookedBy)+'</span></div></div>'+
+        (own?'<button class="del" data-t="'+time+'">✕</button>':'')+
+        '</div>';
+    } else {
+      h+='<div class="se" data-t="'+time+'"'+(dateBlocked?' style="opacity:.5;pointer-events:none"':'')+'><span class="st">'+time+(isCust?'<span class="ctag">+</span>':'')+'</span><span class="sa">'+(dateBlocked?'Date blocked':'+ Book this slot')+'</span></div>';
+    }
+  });
+  h+='</div></div><div class="foot">POAGENS Slot Booking · Queen Alexandra Hospital Pre-Op Team · Live synced · Only the booker can remove their slot</div>';
+
+  // Modal
+  if(S.modal){
+    h+='<div class="ov open" id="ov"><div class="mod"><div class="mh"><div class="mtt">Book Slot — '+S.modal+'</div><div class="mss">'+fmtDate(S.date)+'</div></div><div class="mbod">'+
+      '<label class="fl">Patient Name *</label><input class="fi" id="f-name" placeholder="e.g. Emma Louise Lindsay">'+
+      '<label class="fl">Ref Number</label><input class="fi" id="f-ref" placeholder="e.g. PQ 364360">'+
+      '<label class="fl">Test Required *</label><input class="fi" id="f-test" placeholder="Type the test(s) needed">'+
+      '<label class="fl">Nurse</label><select class="fs" id="f-nurse"><option value="">Select nurse</option>'+STAFF.map(s=>'<option value="'+esc(s)+'"'+(s===S.user?' selected':'')+'>'+esc(s)+'</option>').join('')+'</select>'+
+      '<label class="fl">Speciality</label><select class="fs" id="f-spec"><option value="">Select speciality</option>'+SPECS.map(s=>'<option value="'+s+'">'+s+'</option>').join('')+'</select>'+
+      '<label class="fl">Notes</label><input class="fi" id="f-notes" placeholder="Any extra info">'+
+      '</div><div class="mft"><button class="bc" id="m-c">Cancel</button><button class="bok" id="m-ok">Confirm Booking</button></div></div></div>';
+  }
+  return h;
+}
+function bindMain(){
+  bindHdrNav();
+  document.getElementById('dp').onclick=()=>{S.date=navD(S.date,-1);listenToDate(S.date);render()};
+  document.getElementById('dn').onclick=()=>{S.date=navD(S.date,1);listenToDate(S.date);render()};
+
+  document.querySelectorAll('.se').forEach(el=>{
+    el.onclick=()=>{S.modal=el.dataset.t;render();setTimeout(()=>{const i=document.getElementById('f-name');if(i)i.focus()},80)};
+  });
+
+  document.querySelectorAll('.del').forEach(b=>{
+    b.onclick=e=>{
+      e.stopPropagation();const t=b.dataset.t;const sl=S.dayData.slots[t];
+      if(!sl)return;
+      if(sl.bookedBy!==S.user){toast('Only '+sl.bookedBy+' can remove this','error');return}
+      if(!confirm('Remove booking for '+sl.patientName+' at '+t+'?'))return;
+      FB.delSlot(S.date,t);toast('Booking removed','info');
+    };
+  });
+
+  if(S.modal){
+    document.getElementById('ov').onclick=e=>{if(e.target.id==='ov'){S.modal=null;render()}};
+    document.getElementById('m-c').onclick=()=>{S.modal=null;render()};
+    document.getElementById('m-ok').onclick=()=>{
+      const name=document.getElementById('f-name').value.trim();
+      const ref=document.getElementById('f-ref').value.trim();
+      const test=document.getElementById('f-test').value.trim();
+      const nurse=document.getElementById('f-nurse').value;
+      const spec=document.getElementById('f-spec').value;
+      const notes=document.getElementById('f-notes').value.trim();
+      if(!name){toast('Patient name required','error');return}
+      if(!test){toast('Please type the test(s) required','error');return}
+      // Check not already taken
+      if(S.dayData.slots[S.modal]){toast('Slot already taken','error');S.modal=null;render();return}
+      FB.saveSlot(S.date,S.modal,{patientName:name,refNumber:ref,testRequired:test,nurse,spec,notes,bookedBy:S.user,bookedAt:new Date().toISOString()});
+      const t=S.modal;S.modal=null;toast('Booked '+name+' at '+t,'success');
+    };
+  }
+}
+
+// ═══════════════════════════════════════
+// CALENDAR
+// ═══════════════════════════════════════
+function calHTML(){
+  const start=new Date(todayStr()+'T12:00:00');
+  const days=[];for(let i=0;i<28;i++){const d=new Date(start);d.setDate(d.getDate()+i);days.push(d.toISOString().split('T')[0])}
+
+  let h=hdrHTML()+navHTML()+'<div class="main"><h2 class="sec-h">Next 4 Weeks</h2><p class="sec-p">Tap a date to view or book. Red = blocked.</p><div class="cgrid">';
+  days.forEach(ds=>{
+    const d=new Date(ds+'T12:00:00');
+    const dn=d.toLocaleDateString('en-GB',{weekday:'short'});
+    const dnum=d.getDate();
+    const isToday=ds===todayStr();
+    const isBlk=(S.config.blockedDates||[]).includes(ds);
+    const isWknd=d.getDay()===0||d.getDay()===6;
+    const cnt=S.calData[ds]!==undefined?S.calData[ds]:'...';
+    let cls='cday';if(isToday)cls+=' today';if(isBlk)cls+=' blocked';if(isWknd)cls+=' wknd';
+    h+='<button class="'+cls+'" data-d="'+ds+'"><span style="font-size:10px;color:var(--t3);font-weight:600">'+dn+'</span><span style="font-size:18px;font-weight:800;color:'+(isToday?'var(--br)':'var(--t1)')+'">'+dnum+'</span>';
+    if(isBlk)h+='<span style="font-size:9px;color:var(--red);font-weight:700">BLOCKED</span>';
+    else h+='<span style="font-size:10px;color:'+(cnt>0?'var(--blue)':'var(--t4)')+';font-weight:600">'+cnt+' booked</span>';
+    h+='</button>';
+  });
+  h+='</div></div>';
+  return h;
+}
+function bindCal(){
+  bindHdrNav();
+  // Load calendar data
+  const start=new Date(todayStr()+'T12:00:00');
+  for(let i=0;i<28;i++){
+    const d=new Date(start);d.setDate(d.getDate()+i);
+    const ds=d.toISOString().split('T')[0];
+    FB.getDaySummary(ds,info=>{S.calData[ds]=info.booked;
+      // Update just the count text without full re-render
+      const btn=document.querySelector('.cday[data-d="'+ds+'"]');
+      if(btn){const spans=btn.querySelectorAll('span');if(spans[2]&&!((S.config.blockedDates||[]).includes(ds)))spans[2].textContent=info.booked+' booked'}
+    });
+  }
+  document.querySelectorAll('.cday').forEach(b=>{
+    b.onclick=()=>{S.date=b.dataset.d;S.view='main';listenToDate(S.date);render()};
+  });
+}
+
+// ═══════════════════════════════════════
+// HISTORY
+// ═══════════════════════════════════════
+function histHTML(){
+  let h=hdrHTML()+navHTML()+'<div class="main"><h2 class="sec-h">Booking History</h2><p class="sec-p">Tap a date to view that day\'s bookings</p><div id="hist-list"><p style="color:var(--t3);font-size:13px">Loading...</p></div></div>';
+  return h;
+}
+function bindHist(){
+  bindHdrNav();
+  FB.getAllDays(dates=>{
+    const el=document.getElementById('hist-list');
+    if(!el)return;
+    if(dates.length===0){el.innerHTML='<p style="color:var(--t3);font-size:13px">No bookings yet.</p>';return}
+    el.innerHTML=dates.map(({date:d,count})=>{
+      const cl=chipLbl(d);
+      return'<button class="hbtn" data-d="'+d+'"><span><span style="font-weight:700;color:var(--blue);font-size:14px">'+fmtDate(d)+'</span>'+(cl?'<span class="chip">'+cl+'</span>':'')+'</span><span style="font-size:11px;color:var(--t3);background:var(--bg);padding:3px 10px;border-radius:8px">'+count+' slot'+(count!==1?'s':'')+'</span></button>';
+    }).join('');
+    document.querySelectorAll('.hbtn').forEach(b=>{
+      b.onclick=()=>{S.date=b.dataset.d;S.view='main';listenToDate(S.date);render()};
+    });
+  });
+}
+
+// ═══════════════════════════════════════
+// ADMIN / MANAGE
+// ═══════════════════════════════════════
+function adminHTML(){
+  const blocked=S.config.blockedDates||[];
+  const dayBlocked=S.dayData.blocked||[];
+  const allTimes=sortT([...new Set([...DEF_TIMES,...(S.dayData.customTimes||[])])]);
+
+  let h=hdrHTML()+navHTML()+'<div class="main"><h2 class="sec-h">Manage Availability</h2>';
+
+  // Block dates
+  h+='<div class="acard"><h3 class="ah3">Block a Date (Make Unavailable)</h3><p style="font-size:12px;color:var(--t3);margin-bottom:8px">No one can book on blocked dates.</p>';
+  h+='<div class="arow"><div><label class="fl">Single Date</label><input type="date" class="fi" id="a-bd" style="width:170px"></div><span style="padding:8px 0;color:var(--t3);font-size:12px">or range:</span><div><label class="fl">From</label><input type="date" class="fi" id="a-bf" style="width:150px"></div><div><label class="fl">To</label><input type="date" class="fi" id="a-bt" style="width:150px"></div><button class="bred" id="a-block">Block</button></div>';
+  if(blocked.length>0){
+    h+='<div style="margin-top:12px"><p style="font-size:11px;font-weight:700;color:var(--t2);margin-bottom:6px">CURRENTLY BLOCKED:</p><div>';
+    [...blocked].sort().forEach(d=>{h+='<span class="bchip">'+shortDate(d)+'<button data-ud="'+d+'">✕</button></span>'});
+    h+='</div></div>';
+  }
+  h+='</div>';
+
+  // Block time slots
+  h+='<div class="acard"><h3 class="ah3">Block Time Slots on '+shortDate(S.date)+'</h3><p style="font-size:12px;color:var(--t3);margin-bottom:8px">Block specific times. Navigate to the date first using Booking view.</p>';
+  h+='<div class="arow"><div><label class="fl">Time Slot</label><select class="fs" id="a-bt2" style="width:140px"><option value="">Select</option>'+allTimes.filter(t=>!dayBlocked.includes(t)).map(t=>'<option value="'+t+'">'+t+'</option>').join('')+'</select></div><button class="bred" id="a-bslot">Block Slot</button></div>';
+  if(dayBlocked.length>0){
+    h+='<div style="margin-top:10px"><p style="font-size:11px;font-weight:700;color:var(--t2);margin-bottom:6px">BLOCKED ON '+shortDate(S.date).toUpperCase()+':</p><div>';
+    dayBlocked.sort().forEach(t=>{h+='<span class="bchip">'+t+'<button data-ut="'+t+'">✕</button></span>'});
+    h+='</div></div>';
+  }
+  h+='</div>';
+
+  // Add custom time
+  h+='<div class="acard"><h3 class="ah3">Add Custom Time Slot to '+shortDate(S.date)+'</h3><p style="font-size:12px;color:var(--t3);margin-bottom:8px">Need a non-standard time? Add it here.</p>';
+  h+='<div class="arow"><div><label class="fl">Time (HH:MM)</label><input type="time" class="fi" id="a-ct" style="width:130px"></div><button class="bok" id="a-addtime">Add Time</button></div></div>';
+
+  h+='</div>';
+  return h;
+}
+function bindAdmin(){
+  bindHdrNav();
+
+  // Block date
+  document.getElementById('a-block').onclick=async()=>{
+    const single=document.getElementById('a-bd').value;
+    const from=document.getElementById('a-bf').value;
+    const to=document.getElementById('a-bt').value;
+    const blocked=[...(S.config.blockedDates||[])];
+    if(single){
+      if(!blocked.includes(single))blocked.push(single);
+      FB.saveCfg({...S.config,blockedDates:blocked});
+      toast(fmtDate(single)+' blocked','success');
+    } else if(from&&to){
+      let d=new Date(from+'T12:00:00');const end=new Date(to+'T12:00:00');
+      while(d<=end){const ds=d.toISOString().split('T')[0];if(!blocked.includes(ds))blocked.push(ds);d.setDate(d.getDate()+1)}
+      FB.saveCfg({...S.config,blockedDates:blocked});
+      toast('Date range blocked','success');
+    } else {toast('Select a date or range','error')}
+  };
+
+  // Unblock date
+  document.querySelectorAll('[data-ud]').forEach(b=>{
+    b.onclick=()=>{
+      const d=b.dataset.ud;
+      const blocked=(S.config.blockedDates||[]).filter(x=>x!==d);
+      FB.saveCfg({...S.config,blockedDates:blocked});
+      toast(shortDate(d)+' unblocked','success');
+    };
+  });
+
+  // Block time slot
+  document.getElementById('a-bslot').onclick=()=>{
+    const t=document.getElementById('a-bt2').value;
+    if(!t){toast('Select a time','error');return}
+    const blocked=[...(S.dayData.blocked||[])];
+    if(!blocked.includes(t))blocked.push(t);
+    FB.saveBlocked(S.date,blocked);
+    toast(t+' blocked on '+shortDate(S.date),'success');
+  };
+
+  // Unblock time
+  document.querySelectorAll('[data-ut]').forEach(b=>{
+    b.onclick=()=>{
+      const t=b.dataset.ut;
+      const blocked=(S.dayData.blocked||[]).filter(x=>x!==t);
+      FB.saveBlocked(S.date,blocked);
+      toast(t+' unblocked','success');
+    };
+  });
+
+  // Add custom time
+  document.getElementById('a-addtime').onclick=()=>{
+    const t=document.getElementById('a-ct').value;
+    if(!t){toast('Enter a time','error');return}
+    const ct=[...(S.dayData.customTimes||[])];
+    if(DEF_TIMES.includes(t)||ct.includes(t)){toast('Time already exists','error');return}
+    ct.push(t);
+    FB.saveCustomTimes(S.date,ct);
+    toast(t+' added','success');
+  };
+}
+
+// ═══════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════
+if(S.user){listenToDate(S.date);listenToConfig()}
+render();
+</script>
+</body>
+</html>
